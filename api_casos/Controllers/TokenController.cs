@@ -11,23 +11,26 @@ using System.Text;
 
 namespace api_casos.Controllers
 {
-    [Route("api/token")]
+    [Route("api/seguridad")]
     [ApiController]
     public class TokenController : ControllerBase
     {
 
         public IConfiguration _configuration;
         private readonly DataBaseContext _context;
+        private readonly string secretKey;
 
         public TokenController(IConfiguration config, DataBaseContext context)
         {
+            secretKey = config.GetSection("Jwt").GetSection("key").ToString();
             _configuration = config;    
             _context = context;
         }
 
 
         [HttpPost]
-        public async Task<IActionResult> Post(Usuarios _usuarios)
+        [Route("Validar")]
+        public async Task<IActionResult> Validar([FromBody]Usuarios _usuarios)
         {
             if (_usuarios != null && _usuarios.usuario != null && _usuarios.clave != null) 
             {
@@ -35,37 +38,37 @@ namespace api_casos.Controllers
 
                 if(user != null)
                 {
-                    var claims = new[]
+                    var keyBytes = Encoding.ASCII.GetBytes(secretKey);
+                    ClaimsPrincipal principal = new ClaimsPrincipal();
+                    var claims = (ClaimsIdentity)principal.Identity;
+
+                    claims.AddClaim(new Claim(ClaimTypes.NameIdentifier, _usuarios.usuario));
+                    claims.AddClaim(new Claim(ClaimTypes.Email, _usuarios.correo));
+                    claims.AddClaim(new Claim(ClaimTypes.Name, (_usuarios.nombre +" "+_usuarios.apellido1+" "+_usuarios.apellido2)));
+
+                    var tokenDescriptor = new SecurityTokenDescriptor
                     {
-                        new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, _configuration["Jwt:Key"]),
-                        new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                        new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
-                        new Claim("id_usuario", user.id_usuario.ToString()),
-                        new Claim("nombre", user.nombre),
-                        new Claim("usuario", user.usuario),
-                        new Claim("correo", user.correo)
+                        Subject = claims,
+                        Expires = DateTime.UtcNow.AddMinutes(5),
+                        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
                     };
 
-                    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-                    var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-                    var token = new JwtSecurityToken(
-                        _configuration["Jwt:Issuer"],
-                        _configuration["Jwt:Audience"],
-                        claims,
-                        //expires: DateTime.UtcNow.AddMinutes(10),
-                        expires: DateTime.UtcNow.AddDays(1),
-                        signingCredentials: signIn);
+                    var tokenHandler = new JwtSecurityTokenHandler();
+                    var tokenConfig = tokenHandler.CreateToken(tokenDescriptor);
 
-                    return Ok(new JwtSecurityTokenHandler().WriteToken(token));
+                    string tokencreado = tokenHandler.WriteToken(tokenConfig);
+
+                    return StatusCode(StatusCodes.Status200OK, new { token = tokencreado });
+
                 }
                 else
                 {
-                    return BadRequest("Datos incorrectos");
+                    return StatusCode(StatusCodes.Status409Conflict, new {mensaje = "Error al crear el token", token = "" });
                 }
             }
             else
             {
-                return BadRequest();
+                return StatusCode(StatusCodes.Status404NotFound, new {mensaje = "Sin datos de usuario", token = "" });
             }
         }
 
