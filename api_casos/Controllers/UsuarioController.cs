@@ -1,12 +1,14 @@
 ﻿using api_casos.Datos.Interfaces;
 using api_casos.Modelos;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace api_casos.Controllers
 {
+    [EnableCors("ReglasCors")]
     [Authorize]
     [Route("api/usuarios")]
     [ApiController]
@@ -26,9 +28,19 @@ namespace api_casos.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Usuarios>>> Get()
+        [Route("ListaUsuarios")]
+        public async Task<IActionResult> ListaUsuarios()
         {
-            return await Task.FromResult(_IUsuario.GetUsuarioDetails());
+            List<Usuarios> lista = new List<Usuarios>();
+            try
+            {
+                lista = await Task.FromResult(_IUsuario.GetUsuarioDetails());
+                return StatusCode(StatusCodes.Status200OK, new { mensaje = "Ok", response = lista });
+            }
+            catch(Exception error)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = error.Message + "Error de algo", response = lista });
+            }
         }
 
         [HttpGet("{id}")]
