@@ -38,21 +38,17 @@ builder.Configuration.AddJsonFile("appsettings.json");
 var secretKey = builder.Configuration.GetSection("Jwt").GetSection("Key").ToString();
 var keyBytes = Encoding.UTF8.GetBytes(secretKey);
 
-builder.Services.AddAuthentication(config => {
-
-    config.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    config.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-
- }).AddJwtBearer(config => {
-
-    config.RequireHttpsMetadata = false;
-    config.SaveToken = true;
-    config.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters()
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
         ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateAudience = false,
+        //ValidAudience = builder.Configuration["Jwt:Audience"],
+        //ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 });
 

@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace api_casos.Controllers
 {
     [EnableCors("ReglasCors")]
-    [Route("api/usuarios")]
     [Authorize]
+    [Route("api/usuarios")]
     [ApiController]
     public class UsuarioController : ControllerBase
     {
