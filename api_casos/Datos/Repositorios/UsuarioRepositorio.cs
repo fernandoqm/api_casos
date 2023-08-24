@@ -65,6 +65,7 @@ namespace api_casos.Datos.Repositorios
             
         }
 
+
         public List<Usuarios> GetUsuarioDetails()
         {
             try

@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace api_casos.Controllers
 {
@@ -17,9 +21,9 @@ namespace api_casos.Controllers
 
         private readonly IUsuario _IUsuario;
 
-        public UsuarioController(IUsuario usuario)
+        public UsuarioController(IUsuario _usuario)
         {
-            _IUsuario = usuario;
+            _IUsuario = _usuario;
         }
 
         private bool UsuarioExiste(int id)
