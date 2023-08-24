@@ -10,10 +10,15 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.JsonWebTokens;
+using System;
+using Microsoft.Identity.Client;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Cors;
 
 namespace api_casos.Controllers
 {
     [Route("api/seguridad")]
+    [EnableCors("ReglasCors")]
     [ApiController]
     public class TokenController : ControllerBase
     {
@@ -21,6 +26,8 @@ namespace api_casos.Controllers
         public IConfiguration _configuration;
         private readonly DataBaseContext _context;
         private readonly string secretKey;
+        private readonly JWTSetting jWT;
+        private readonly IRefreshTokenGenerator tokenGenerador;
 
 
         public TokenController(IConfiguration config, DataBaseContext context)
@@ -59,7 +66,7 @@ namespace api_casos.Controllers
                         _configuration["Jwt:Issuer"],
                         _configuration["Jwt:Audience"],
                         claims,
-                        expires: DateTime.UtcNow.AddHours(5),
+                        expires: DateTime.UtcNow.AddSeconds(30),
                         signingCredentials: sigIn
                         );
 
@@ -72,7 +79,7 @@ namespace api_casos.Controllers
                 }
                 else
                 {
-                    return StatusCode(StatusCodes.Status409Conflict, new { mensaje = "Error al crear el token", token = "" });
+                    return StatusCode(StatusCodes.Status409Conflict, new { mensaje = "Error al validar el usuario", token = "" });
                 }
             }
             else
@@ -86,7 +93,22 @@ namespace api_casos.Controllers
             return await _context.UsuarioInfo.FirstOrDefaultAsync(usua => usua.usuario == pUsuario && usua.clave == pClave);
         }
 
+        [NonAction]
+        public TokenResponse Validar(string username, Claim[] claims)
+        {
+            TokenResponse tokenResponse = new TokenResponse();
+            var tokenkey = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
+            var tokenhandler = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(15),
+                 signingCredentials: new SigningCredentials(new SymmetricSecurityKey(tokenkey), SecurityAlgorithms.HmacSha256)
 
+                );
+            tokenResponse.JWTToken = new JwtSecurityTokenHandler().WriteToken(tokenhandler);
+            tokenResponse.RefreshToken = tokenGenerador.GenerateToken(username);
+
+            return tokenResponse;
+        }
 
     }
 }
